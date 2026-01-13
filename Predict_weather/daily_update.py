@@ -6,8 +6,9 @@ import keras
 from tensorflow.keras.models import load_model
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
+import os
 
-API_KEY = "b8425717b72c4c4292d42808261301"
+API_KEY = os.getenv("WEATHER_API_KEY")
 CITY = "Nagpur"
 
 def fetch_live_weather():
