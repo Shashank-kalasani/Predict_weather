@@ -9,7 +9,8 @@ from tensorflow.keras.optimizers import Adam
 import os
 
 API_KEY = os.getenv("WEATHER_API_KEY")
-CITY = "Nagpur"
+CITY = os.getenv("CITY", "Nagpur")
+
 
 def fetch_live_weather():
     url = "https://api.weatherapi.com/v1/current.json"
