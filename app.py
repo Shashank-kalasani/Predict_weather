@@ -3,128 +3,146 @@ import pandas as pd
 import numpy as np
 import joblib
 from tensorflow.keras.models import load_model
-from tensorflow.keras.optimizers import Adam
+import altair as alt
 
-# ================= CONFIG =================
+# ---------------- CONFIG ----------------
 DATA_PATH = "data/live_weather.csv"
 MODEL_PATH = "model/temp_lstm.keras"
 SCALER_PATH = "model/temp_scaler.pkl"
 WINDOW = 24
-# =========================================
 
-st.set_page_config(
-    page_title="Tomorrow Weather Forecast",
-    layout="centered"
-)
+st.set_page_config(page_title="Weather Prediction", layout="wide")
 
-st.title("🌦️ Tomorrow Weather Prediction (Next 24 Hours)")
-
-# -------- Load model & scaler (cached) --------
-@st.cache_resource
-def load_model_and_scaler():
-    model = load_model(MODEL_PATH, compile=False)
-    model.compile(
-        optimizer=Adam(0.001),
-        loss="mse"
-    )
-    scaler = joblib.load(SCALER_PATH)
-    return model, scaler
-
-# -------- Load data (cached) --------
+# ---------------- DATA LOADING ----------------
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_PATH)
+
+    # UTC → IST (DISPLAY ONLY)
     df["time"] = (
-    pd.to_datetime(df["time"], utc=True)
-      .dt.tz_convert("Asia/Kolkata")
+        pd.to_datetime(df["time"], utc=True)
+        .dt.tz_convert("Asia/Kolkata")
     )
 
     df = df.sort_values("time").reset_index(drop=True)
     return df
 
-model, scaler = load_model_and_scaler()
+@st.cache_resource
+def load_model_and_scaler():
+    model = load_model(MODEL_PATH, compile=False)
+    scaler = joblib.load(SCALER_PATH)
+    return model, scaler
+
 df = load_data()
+model, scaler = load_model_and_scaler()
 
-# -------- Prediction logic --------
-def predict_next_24h(df):
-    last_time = df["time"].iloc[-1]
+# ---------------- HEADER ----------------
+st.title("🌦️ Weather Forecast (IST)")
+st.caption("All times shown in IST (Asia/Kolkata)")
 
-    # last 24 hours (scaled)
-    temps = scaler.transform(df[["temp"]].values)[-WINDOW:]
-
-    preds_scaled = []
-
-    for _ in range(24):
-        x = temps.reshape(1, WINDOW, 1)
-        p = model.predict(x, verbose=0)[0][0]
-        preds_scaled.append(p)
-        temps = np.vstack([temps[1:], [[p]]])
-
-    preds = scaler.inverse_transform(
-        np.array(preds_scaled).reshape(-1, 1)
-    ).flatten()
-
-    future_times = pd.date_range(
-        start=last_time + pd.Timedelta(hours=1),
-        periods=24,
-        freq="h"
-    )
-
-    forecast_df = pd.DataFrame({
-        "time": future_times,
-        "predicted_temp": preds
-    })
-
-    return forecast_df
-
-# ================= UI =================
-
-st.subheader("📊 Recent Temperature (Last 48 Hours)")
-st.line_chart(
-    df.set_index("time")["temp"].tail(48)
+last_time = df["time"].iloc[-1]
+st.markdown(
+    f"**Last available data:** {last_time.strftime('%d %b %Y, %I:%M %p')} IST"
 )
 
-st.caption(f"Last available data: **{df['time'].iloc[-1]}**")
+# ---------------- LAST 48 HOURS CHART ----------------
+st.subheader("📉 Last 48 Hours Temperature")
 
-st.divider()
+hist_df = df.tail(48)
 
-if st.button("🔮 Predict Tomorrow (Next 24 Hours)"):
-    forecast_df = predict_next_24h(df)
+hist_chart = (
+    alt.Chart(hist_df)
+    .mark_line(point=True)
+    .encode(
+        x=alt.X(
+            "time:T",
+            title="Time (IST)",
+            axis=alt.Axis(format="%d %b %I:%M %p")
+        ),
+        y=alt.Y("temp:Q", title="Temperature (°C)"),
+        tooltip=[
+            alt.Tooltip("time:T", title="Time (IST)", format="%d %b %I:%M %p"),
+            alt.Tooltip("temp:Q", title="Temperature (°C)")
+        ]
+    )
+    .properties(height=350)
+)
 
-    st.subheader("🌡️ Hourly Forecast (Next 24 Hours)")
+st.altair_chart(hist_chart, use_container_width=True)
 
-    # ✅ Proper datetime index → correct tooltip
-    st.line_chart(
-        forecast_df.set_index("time")["predicted_temp"]
+# ---------------- NEXT 24 HOURS PREDICTION ----------------
+st.subheader("🔮 Next 24 Hours Forecast")
+
+temps = df["temp"].values.reshape(-1, 1)
+scaled = scaler.transform(temps)
+
+last_seq = scaled[-WINDOW:]
+last_seq = last_seq.reshape(1, WINDOW, 1)
+
+preds = []
+current_seq = last_seq.copy()
+
+for _ in range(24):
+    pred = model.predict(current_seq, verbose=0)[0, 0]
+    preds.append(pred)
+    current_seq = np.append(
+        current_seq[:, 1:, :],
+        [[[pred]]],
+        axis=1
     )
 
-    col1, col2, col3 = st.columns(3)
+preds = scaler.inverse_transform(np.array(preds).reshape(-1, 1)).flatten()
 
-    col1.metric(
-        "🌞 Max Temp",
-        f"{forecast_df['predicted_temp'].max():.2f} °C"
-    )
-    col2.metric(
-        "🌤️ Avg Temp",
-        f"{forecast_df['predicted_temp'].mean():.2f} °C"
-    )
-    col3.metric(
-        "🌙 Min Temp",
-        f"{forecast_df['predicted_temp'].min():.2f} °C"
-    )
+future_times = pd.date_range(
+    start=last_time + pd.Timedelta(hours=1),
+    periods=24,
+    freq="H",
+    tz="Asia/Kolkata"
+)
 
-    st.subheader("📋 Detailed Forecast Table")
-    st.dataframe(
-        forecast_df.style.format({
-            "predicted_temp": "{:.2f} °C"
-        }),
-        use_container_width=True
-    )
+pred_df = pd.DataFrame({
+    "time": future_times,
+    "pred_temp": preds
+})
 
-st.divider()
+# ---------------- PREDICTION CHART ----------------
+pred_chart = (
+    alt.Chart(pred_df)
+    .mark_line(point=True, color="orange")
+    .encode(
+        x=alt.X(
+            "time:T",
+            title="Time (IST)",
+            axis=alt.Axis(format="%d %b %I:%M %p")
+        ),
+        y=alt.Y("pred_temp:Q", title="Predicted Temperature (°C)"),
+        tooltip=[
+            alt.Tooltip("time:T", title="Time (IST)", format="%d %b %I:%M %p"),
+            alt.Tooltip("pred_temp:Q", title="Temperature (°C)")
+        ]
+    )
+    .properties(height=350)
+)
+
+st.altair_chart(pred_chart, use_container_width=True)
+
+# ---------------- NEXT 24 HOURS TABLE ----------------
+st.subheader("📋 Next 24 Hours – Table (IST)")
+
+table_df = pred_df.copy()
+table_df["Time (IST)"] = table_df["time"].dt.strftime("%d %b %I:%M %p")
+table_df["Temperature (°C)"] = table_df["pred_temp"].round(1)
+
+st.dataframe(
+    table_df[["Time (IST)", "Temperature (°C)"]],
+    use_container_width=True,
+    hide_index=True
+)
+
+# ---------------- FOOTER ----------------
+now_ist = pd.Timestamp.utcnow().tz_convert("Asia/Kolkata")
 
 st.caption(
-    "Model auto-updates on server • "
-    "Forecast window moves with time • "
-    "No manual retraining needed"
+    f"⏱ Current IST time: {now_ist.strftime('%d %b %Y, %I:%M %p')} | "
+    "Hourly updates via GitHub Actions"
 )
