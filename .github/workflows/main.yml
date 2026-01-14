@@ -2,16 +2,19 @@ name: Auto Update Weather Model
 
 on:
   schedule:
-    - cron: "0 * * * *"   # hourly
-    - cron: "0 6 * * *"   # daily
+    - cron: "0 * * * *"   # every hour (UTC)
+    - cron: "0 6 * * *"   # daily at 6 AM (UTC)
   workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write   # REQUIRED to push commits
+
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -21,31 +24,32 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Hourly weather fetch
+      - name: Hourly weather update
         env:
           WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
           CITY: ${{ secrets.CITY }}
         run: |
           python daily_update.py
 
-      - name: Daily model training (6 AM IST only)
-        env:
-          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
-          CITY: ${{ secrets.CITY }}
+      - name: Daily model training (run only at 6 AM UTC)
         run: |
-          hour=$(date +%H)
-          if [ "$hour" = "06" ]; then
+          HOUR=$(date -u +%H)
+          if [ "$HOUR" = "06" ]; then
             python daily_train.py
           else
-            echo "Skipping daily training"
+            echo "Skipping daily training (not 6 AM UTC)"
           fi
 
-      - name: Commit and push changes
+      - name: Commit and push updated data/model
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+
           git add data model
-          git commit -m "auto update weather model" || echo "No changes"
+
+          git commit -m "auto update weather data and model" || echo "No changes to commit"
+
           git push
