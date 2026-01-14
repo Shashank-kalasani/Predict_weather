@@ -34,7 +34,11 @@ def load_model_and_scaler():
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_PATH)
-    df["time"] = pd.to_datetime(df["time"])
+    df["time"] = (
+    pd.to_datetime(df["time"], utc=True)
+      .dt.tz_convert("Asia/Kolkata")
+    )
+
     df = df.sort_values("time").reset_index(drop=True)
     return df
 
