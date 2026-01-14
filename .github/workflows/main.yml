@@ -2,8 +2,8 @@ name: Auto Update Weather Model
 
 on:
   schedule:
-    - cron: "0 * * * *"   # every hour (UTC)
-    - cron: "0 6 * * *"   # daily at 6 AM (UTC)
+    - cron: "0 * * * *"   # hourly
+    - cron: "0 6 * * *"   # daily training (UTC)
   workflow_dispatch:
 
 jobs:
@@ -11,11 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write   # REQUIRED to push commits
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # FULL history (mandatory)
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -34,23 +36,27 @@ jobs:
         run: |
           python daily_update.py
 
-      - name: Daily model training (run only at 6 AM UTC)
+      - name: Daily model training (6 AM UTC only)
         run: |
-          HOUR=$(date -u +%H)
-          if [ "$HOUR" = "06" ]; then
+          if [ "$(date -u +%H)" = "06" ]; then
             python daily_train.py
           else
-            echo "Skipping daily training (not 6 AM UTC)"
+            echo "Skipping daily training"
           fi
 
-      - name: Commit and push updated data/model
+      - name: Sync, commit and push
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-      
-          git add data model
-          git commit -m "auto update weather data and model" || echo "No changes to commit"
-      
-          git pull --rebase origin main
-          git push origin main
 
+          # ALWAYS sync FIRST
+          git pull --rebase origin main
+
+          # THEN stage changes
+          git add data model
+
+          # THEN commit
+          git commit -m "auto update weather data and model" || echo "No changes"
+
+          # THEN push
+          git push origin main
