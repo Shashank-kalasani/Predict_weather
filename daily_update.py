@@ -32,7 +32,7 @@ def fetch_live_weather():
 
 
 def update_data():
-    df=pd.read_csv(r"C:\Users\kalas\Desktop\desktopcopy\coding\ML_Projects\predict_weather\data\live_weather.csv")
+    df=pd.read_csv(r"data/live_weather.csv")
 
     time,temp=fetch_live_weather()
     
