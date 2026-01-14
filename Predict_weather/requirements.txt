@@ -1,1 +1,15 @@
-requirements.txt
+streamlit
+streamlit
+tensorflow
+keras
+numpy
+pandas
+scikit-learn
+joblib
+requests
+keras
+numpy
+pandas
+scikit-learn
+joblib
+requests

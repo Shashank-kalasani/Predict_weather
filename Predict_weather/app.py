@@ -6,9 +6,9 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
 
 # ================= CONFIG =================
-DATA_PATH = r"C:\Users\kalas\Desktop\desktopcopy\coding\ML_Projects\predict_weather\data\live_weather.csv"
-MODEL_PATH = r"C:\Users\kalas\Desktop\desktopcopy\coding\ML_Projects\predict_weather\model\temp_lstm.h5"
-SCALER_PATH = r"C:\Users\kalas\Desktop\desktopcopy\coding\ML_Projects\predict_weather\model\temp_scaler.pkl"
+DATA_PATH = "data/live_weather.csv"
+MODEL_PATH = "model/temp_lstm.keras"
+SCALER_PATH = "model/temp_scaler.pkl"
 WINDOW = 24
 # =========================================
 
