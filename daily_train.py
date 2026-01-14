@@ -18,12 +18,12 @@ epochs_daily=2
 
 
 def train_model():
-    df=pd.read_csv(r'C:\Users\kalas\Desktop\desktopcopy\coding\ML_Projects\predict_weather\data\live_weather.csv')
+    df=pd.read_csv(r'data/live_weather.csv')
 
-    scaler=joblib.load(r'C:\Users\kalas\Desktop\desktopcopy\coding\ML_Projects\predict_weather\model\temp_scaler.pkl')
+    scaler=joblib.load(r'model/temp_scaler.pkl')
 
     model = load_model(
-        r'C:\Users\kalas\Desktop\desktopcopy\coding\ML_Projects\predict_weather\model\temp_lstm.h5',
+        r'model/temp_lstm.keras',
         compile=False
     )
 
