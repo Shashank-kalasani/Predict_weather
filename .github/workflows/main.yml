@@ -1,0 +1,51 @@
+name: Auto Update Weather Model
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # hourly
+    - cron: "0 6 * * *"   # daily
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Hourly weather fetch
+        env:
+          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+          CITY: ${{ secrets.CITY }}
+        run: |
+          python daily_update.py
+
+      - name: Daily model training (6 AM IST only)
+        env:
+          WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+          CITY: ${{ secrets.CITY }}
+        run: |
+          hour=$(date +%H)
+          if [ "$hour" = "06" ]; then
+            python daily_train.py
+          else
+            echo "Skipping daily training"
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data model
+          git commit -m "auto update weather model" || echo "No changes"
+          git push
