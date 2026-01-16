@@ -46,4 +46,13 @@ def update_data():
 
     # Remove duplicates by hour
     df = df.drop_duplicates(subset="time", keep="last")
-    df =
+    df = df.sort_values("time").reset_index(drop=True)
+
+    # ✅ WRITE RELATIVE PATH (WORKS EVERYWHERE)
+    df.to_csv(DATA_PATH, index=False)
+
+    print(f"✅ Weather updated: {time} → {temp}°C")
+
+
+if __name__ == "__main__":
+    update_data()
