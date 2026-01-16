@@ -25,7 +25,6 @@ def load_data():
     df = pd.read_csv(DATA_PATH)
 
     times = pd.to_datetime(df["time"], errors="coerce")
-
     if times.dt.tz is None:
         df["time"] = times.dt.tz_localize(IST)
     else:
@@ -33,8 +32,6 @@ def load_data():
 
     df = df.sort_values("time").reset_index(drop=True)
     return df
-
-
 
 def load_model_and_scaler():
     model = load_model(MODEL_PATH, compile=False)
