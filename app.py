@@ -24,11 +24,16 @@ st.set_page_config(
 def load_data():
     df = pd.read_csv(DATA_PATH)
 
-    # CSV times are tz-naive IST → localize
-    df["time"] = pd.to_datetime(df["time"]).dt.tz_localize(IST)
+    times = pd.to_datetime(df["time"], errors="coerce")
+
+    if times.dt.tz is None:
+        df["time"] = times.dt.tz_localize(IST)
+    else:
+        df["time"] = times.dt.tz_convert(IST)
 
     df = df.sort_values("time").reset_index(drop=True)
     return df
+
 
 
 def load_model_and_scaler():
