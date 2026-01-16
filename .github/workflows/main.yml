@@ -2,69 +2,89 @@ name: Auto Update Weather Model
 
 on:
   schedule:
-    - cron: "0 * * * *"   # Hourly data update
-    - cron: "0 6 * * *"   # Daily training at 06:00 UTC
+    # Hourly update (runs at HH:30 IST)
+    - cron: "30 * * * *"
+
+    # Daily training at 06:00 UTC (11:30 IST)
+    - cron: "0 6 * * *"
+
   workflow_dispatch:
 
 jobs:
-  update:
+  update-and-train:
     runs-on: ubuntu-latest
 
     permissions:
       contents: write
 
     steps:
-      # Checkout repo
+      # -------------------------------
+      # Checkout repo (FULL SYNC)
+      # -------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          clean: true
 
-      #  Setup Python
+      # -------------------------------
+      # Setup Python
+      # -------------------------------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      #  Install dependencies
+      # -------------------------------
+      # Install dependencies
+      # -------------------------------
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      #  Pull latest main FIRST (important)
-      - name: Sync with main
-        run: |
-          git pull origin main
+      # -------------------------------
+      # DEBUG: show time
+      # -------------------------------
+      - name: Show execution time (UTC)
+        run: date -u
 
-      #  Hourly weather data update
+      # -------------------------------
+      # Hourly weather data update
+      # -------------------------------
       - name: Hourly weather update
         env:
           WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
           CITY: ${{ secrets.CITY }}
         run: |
+          echo "=== RUNNING DAILY UPDATE ==="
           python daily_update.py
 
-      #  Daily model training (only at 06:00 UTC)
+      # -------------------------------
+      # Daily training (ONLY at 06 UTC)
+      # -------------------------------
       - name: Daily model training
         run: |
           if [ "$(date -u +%H)" = "06" ]; then
+            echo "=== RUNNING DAILY TRAINING ==="
             python daily_train.py
           else
-            echo "Skipping daily training"
+            echo "Skipping daily training (not 06 UTC)"
           fi
 
-      # Commit & push changes (if any)
+      # -------------------------------
+      # Commit & push changes
+      # -------------------------------
       - name: Commit and push changes
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-
+          git status
           git add data model
-          git commit -m "auto update weather data and model" || echo "No changes"
+          git commit -m "auto update weather data and model" || echo "No changes to commit"
           git push origin main
 
-      #  Trigger Render redeploy
+      # -------------------------------
+      # Trigger Render redeploy
+      # -------------------------------
       - name: Trigger Render redeploy
         env:
           RENDER_HOOK: ${{ secrets.RENDER }}
