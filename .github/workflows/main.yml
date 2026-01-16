@@ -2,37 +2,42 @@ name: Auto Update Weather Model
 
 on:
   schedule:
-    - cron: "0 * * * *"   # hourly update
-    - cron: "0 6 * * *"   # daily training at 06:00 UTC
+    - cron: "0 * * * *"   # Hourly data update
+    - cron: "0 6 * * *"   # Daily training at 06:00 UTC
   workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
+
     permissions:
       contents: write
 
     steps:
+      # Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      #  Setup Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+      #  Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # 🔴 PULL FIRST (IMPORTANT)
-      - name: Pull latest main
+      #  Pull latest main FIRST (important)
+      - name: Sync with main
         run: |
           git pull origin main
 
+      #  Hourly weather data update
       - name: Hourly weather update
         env:
           WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
@@ -40,7 +45,8 @@ jobs:
         run: |
           python daily_update.py
 
-      - name: Daily model training (06:00 UTC only)
+      #  Daily model training (only at 06:00 UTC)
+      - name: Daily model training
         run: |
           if [ "$(date -u +%H)" = "06" ]; then
             python daily_train.py
@@ -48,6 +54,7 @@ jobs:
             echo "Skipping daily training"
           fi
 
+      # Commit & push changes (if any)
       - name: Commit and push changes
         run: |
           git config user.name "github-actions"
@@ -57,7 +64,8 @@ jobs:
           git commit -m "auto update weather data and model" || echo "No changes"
           git push origin main
 
-      - name: Trigger Render Redeploy
+      #  Trigger Render redeploy
+      - name: Trigger Render redeploy
         env:
           RENDER_HOOK: ${{ secrets.RENDER }}
         run: |
