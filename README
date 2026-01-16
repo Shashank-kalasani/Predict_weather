@@ -1,0 +1,36 @@
+# 🌦 Live Weather Forecasting System
+
+## Problem Statement
+Predict hourly temperature using historical and live weather data to help in short-term weather planning.
+
+## Tech Stack
+- Python
+- Pandas, NumPy
+- TensorFlow (LSTM)
+- Scikit-learn
+- Streamlit
+- Render (Deployment)
+
+## Approach
+- Collected historical weather data
+- Performed time-series preprocessing
+- Trained LSTM with sliding window technique
+- Scaled data using MinMaxScaler
+- Deployed model with Streamlit for live predictions
+
+## Model Details
+- Architecture: LSTM
+- Window size: 24 hours
+- Evaluation metric: RMSE
+
+## Results
+- Stable short-term predictions
+- Live inference with real-time data updates
+
+## Live Demo
+🔗 https://predict-weather-5xyr.onrender.com
+
+## Future Improvements
+- Add humidity, pressure, wind features
+- Multi-step forecasting
+- Model uncertainty estimation
