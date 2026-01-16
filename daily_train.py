@@ -1,50 +1,51 @@
+import requests
 import pandas as pd
-import numpy as np
-import joblib
-from tensorflow.keras.models import load_model
-from tensorflow.keras.optimizers import Adam
+import os
+import pytz
+
+API_KEY = os.getenv("WEATHER_API_KEY")
+CITY = os.getenv("CITY", "Nagpur")
 
 DATA_PATH = "data/live_weather.csv"
-MODEL_PATH = "model/temp_lstm.keras"
-SCALER_PATH = "model/temp_scaler.pkl"
-
-WINDOW = 24
-EPOCHS_DAILY = 2
+IST = pytz.timezone("Asia/Kolkata")
 
 
-def create_sequences(series, window):
-    X, y = [], []
-    for i in range(window, len(series)):
-        X.append(series[i - window:i])
-        y.append(series[i, 0])
-    return np.array(X), np.array(y)
+def fetch_live_weather():
+    url = "https://api.weatherapi.com/v1/current.json"
+    params = {"key": API_KEY, "q": CITY}
 
+    r = requests.get(url, params=params, timeout=10)
+    r.raise_for_status()
+    data = r.json()
 
-def train_model():
-    df = pd.read_csv(DATA_PATH)
+    temp = data["current"]["temp_c"]
 
-    scaler = joblib.load(SCALER_PATH)
-    model = load_model(MODEL_PATH, compile=False)
-
-    optimizer = Adam(learning_rate=0.001)
-    model.compile(optimizer=optimizer, loss="mse")
-
-    scaled = scaler.transform(df[["temp"]].values)
-
-    X, y = create_sequences(scaled, WINDOW)
-
-    model.fit(
-        X,
-        y,
-        epochs=EPOCHS_DAILY,
-        batch_size=32,
-        verbose=1
+    time_ist = (
+        pd.to_datetime(data["current"]["last_updated"])
+        .tz_localize(IST)
+        .floor("H")
     )
 
-    model.save(MODEL_PATH)
+    return time_ist, temp
 
-    print("Model updated and saved")
+
+def update_data():
+    df = pd.read_csv(DATA_PATH)
+
+    df["time"] = pd.to_datetime(df["time"]).dt.tz_localize(IST)
+
+    time, temp = fetch_live_weather()
+
+    new_row = pd.DataFrame([{"time": time, "temp": temp}])
+    df = pd.concat([df, new_row], ignore_index=True)
+
+    df = df.drop_duplicates(subset="time", keep="last")
+    df = df.sort_values("time").reset_index(drop=True)
+
+    df.to_csv(DATA_PATH, index=False)
+
+    print(f"✅ Weather updated: {time} → {temp}°C")
 
 
 if __name__ == "__main__":
-    train_model()
+    update_data()
