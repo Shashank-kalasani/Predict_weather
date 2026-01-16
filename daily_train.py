@@ -41,10 +41,9 @@ def train_model():
         verbose=1
     )
 
-    # ✅ SAVE BACK TO THE SAME FILE (RELATIVE PATH)
     model.save(MODEL_PATH)
 
-    print("✅ Model updated and saved")
+    print("Model updated and saved")
 
 
 if __name__ == "__main__":
