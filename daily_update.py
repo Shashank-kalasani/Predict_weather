@@ -39,7 +39,6 @@ def fetch_live_weather():
 def update_data():
     df = pd.read_csv(DATA_PATH)
 
-    # 🔥 FIX: normalize mixed timestamps
     df["time"] = normalize_time(df["time"])
 
     time, temp = fetch_live_weather()
@@ -51,7 +50,7 @@ def update_data():
     df = df.sort_values("time").reset_index(drop=True)
 
     df.to_csv(DATA_PATH, index=False)
-    print(f"✅ Weather updated: {time} → {temp}°C")
+    print(f"Weather updated: {time} → {temp}°C")
 
 
 if __name__ == "__main__":
