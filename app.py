@@ -13,20 +13,19 @@ MODEL_PATH = "model/temp_lstm.keras"
 SCALER_PATH = "model/temp_scaler.pkl"
 WINDOW = 24
 
+IST = pytz.timezone("Asia/Kolkata")
+
 st.set_page_config(
     page_title="Weather Prediction",
     layout="wide"
 )
 
-# ---------------- DATA LOADING (NO CACHE) ----------------
+# ---------------- LOAD DATA (NO CACHE) ----------------
 def load_data():
     df = pd.read_csv(DATA_PATH)
 
-    # UTC → IST (DISPLAY ONLY)
-    df["time"] = (
-        pd.to_datetime(df["time"], utc=True)
-        .dt.tz_convert("Asia/Kolkata")
-    )
+    # CSV times are tz-naive IST → localize
+    df["time"] = pd.to_datetime(df["time"]).dt.tz_localize(IST)
 
     df = df.sort_values("time").reset_index(drop=True)
     return df
@@ -51,12 +50,11 @@ st.markdown(
 )
 
 # ---------------- DEBUG: APP RESTART TIME ----------------
-ist = pytz.timezone("Asia/Kolkata")
 st.sidebar.success(
-    f"App restarted at:\n{datetime.now(ist).strftime('%d %b %Y %I:%M:%S %p IST')}"
+    f"App restarted at:\n{datetime.now(IST).strftime('%d %b %Y %I:%M:%S %p IST')}"
 )
 
-# ---------------- LAST 48 HOURS CHART ----------------
+# ---------------- LAST 48 HOURS ----------------
 st.subheader("📉 Last 48 Hours Temperature")
 
 hist_df = df.tail(48)
@@ -110,7 +108,7 @@ future_times = pd.date_range(
     start=last_time + pd.Timedelta(hours=1),
     periods=24,
     freq="H",
-    tz="Asia/Kolkata"
+    tz=IST
 )
 
 pred_df = pd.DataFrame({
@@ -153,7 +151,7 @@ st.dataframe(
 )
 
 # ---------------- FOOTER ----------------
-now_ist = pd.Timestamp.utcnow().tz_convert("Asia/Kolkata")
+now_ist = datetime.now(IST)
 
 st.caption(
     f"⏱ Current IST time: {now_ist.strftime('%d %b %Y, %I:%M %p')} | "
