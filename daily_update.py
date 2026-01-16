@@ -10,6 +10,14 @@ DATA_PATH = "data/live_weather.csv"
 IST = pytz.timezone("Asia/Kolkata")
 
 
+def normalize_time(series):
+    times = pd.to_datetime(series, errors="coerce")
+    if times.dt.tz is None:
+        return times.dt.tz_localize(IST)
+    else:
+        return times.dt.tz_convert(IST)
+
+
 def fetch_live_weather():
     url = "https://api.weatherapi.com/v1/current.json"
     params = {"key": API_KEY, "q": CITY}
@@ -19,7 +27,6 @@ def fetch_live_weather():
     data = r.json()
 
     temp = data["current"]["temp_c"]
-
     time_ist = (
         pd.to_datetime(data["current"]["last_updated"])
         .tz_localize(IST)
@@ -32,7 +39,8 @@ def fetch_live_weather():
 def update_data():
     df = pd.read_csv(DATA_PATH)
 
-    df["time"] = pd.to_datetime(df["time"]).dt.tz_localize(IST)
+    # 🔥 FIX: normalize mixed timestamps
+    df["time"] = normalize_time(df["time"])
 
     time, temp = fetch_live_weather()
 
@@ -43,7 +51,6 @@ def update_data():
     df = df.sort_values("time").reset_index(drop=True)
 
     df.to_csv(DATA_PATH, index=False)
-
     print(f"✅ Weather updated: {time} → {temp}°C")
 
 
