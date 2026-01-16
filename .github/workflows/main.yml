@@ -2,8 +2,8 @@ name: Auto Update Weather Model
 
 on:
   schedule:
-    - cron: "0 * * * *"   # hourly
-    - cron: "0 6 * * *"   # daily training (UTC)
+    - cron: "0 * * * *"   # Hourly weather update
+    - cron: "0 6 * * *"   # Daily model training at 06:00 UTC
   workflow_dispatch:
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
         run: |
           python daily_update.py
 
-      - name: Daily model training (6 AM UTC only)
+      - name: Daily model training (06:00 UTC only)
         run: |
           if [ "$(date -u +%H)" = "06" ]; then
             python daily_train.py
@@ -54,16 +54,9 @@ jobs:
           git commit -m "auto update weather data and model" || echo "No changes"
           git push origin main
 
-      - name: Debug Render secret
-        run: |
-          if [ -z "${{ secrets.RENDER }}" ]; then
-            echo "RENDER secret is EMPTY"
-            exit 1
-          else
-            echo "RENDER secret is PRESENT"
-          fi
-
       - name: Trigger Render Redeploy
+        env:
+          RENDER_HOOK: ${{ secrets.RENDER }}
         run: |
-          curl -X POST "${{ secrets.RENDER }}"
-
+          echo "Triggering Render deploy..."
+          curl -X POST "$RENDER_HOOK"
