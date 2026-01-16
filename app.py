@@ -33,6 +33,7 @@ def load_data():
     df = df.sort_values("time").reset_index(drop=True)
     return df
 
+
 def load_model_and_scaler():
     model = load_model(MODEL_PATH, compile=False)
     scaler = joblib.load(SCALER_PATH)
@@ -51,7 +52,7 @@ st.markdown(
     f"**Last available data:** {last_time.strftime('%d %b %Y, %I:%M %p')} IST"
 )
 
-# ---------------- DEBUG: APP RESTART TIME ----------------
+# ---------------- DEBUG ----------------
 st.sidebar.success(
     f"App restarted at:\n{datetime.now(IST).strftime('%d %b %Y %I:%M:%S %p IST')}"
 )
@@ -65,14 +66,12 @@ hist_chart = (
     alt.Chart(hist_df)
     .mark_line(point=True)
     .encode(
-        x=alt.X(
-            "time:T",
-            title="Time (IST)",
-            axis=alt.Axis(format="%d %b %I:%M %p")
-        ),
+        x=alt.X("time:T", title="Time (IST)",
+                axis=alt.Axis(format="%d %b %I:%M %p")),
         y=alt.Y("temp:Q", title="Temperature (°C)"),
         tooltip=[
-            alt.Tooltip("time:T", title="Time (IST)", format="%d %b %I:%M %p"),
+            alt.Tooltip("time:T", title="Time (IST)",
+                        format="%d %b %I:%M %p"),
             alt.Tooltip("temp:Q", title="Temperature (°C)")
         ]
     )
@@ -123,15 +122,15 @@ pred_chart = (
     alt.Chart(pred_df)
     .mark_line(point=True, color="orange")
     .encode(
-        x=alt.X(
-            "time:T",
-            title="Time (IST)",
-            axis=alt.Axis(format="%d %b %I:%M %p")
-        ),
-        y=alt.Y("pred_temp:Q", title="Predicted Temperature (°C)"),
+        x=alt.X("time:T", title="Time (IST)",
+                axis=alt.Axis(format="%d %b %I:%M %p")),
+        y=alt.Y("pred_temp:Q",
+                title="Predicted Temperature (°C)"),
         tooltip=[
-            alt.Tooltip("time:T", title="Time (IST)", format="%d %b %I:%M %p"),
-            alt.Tooltip("pred_temp:Q", title="Temperature (°C)")
+            alt.Tooltip("time:T", title="Time (IST)",
+                        format="%d %b %I:%M %p"),
+            alt.Tooltip("pred_temp:Q",
+                        title="Temperature (°C)")
         ]
     )
     .properties(height=350)
@@ -139,7 +138,7 @@ pred_chart = (
 
 st.altair_chart(pred_chart, use_container_width=True)
 
-# ---------------- FORECAST TABLE ----------------
+# ---------------- TABLE ----------------
 st.subheader("📋 Next 24 Hours – Table (IST)")
 
 table_df = pred_df.copy()
@@ -154,7 +153,6 @@ st.dataframe(
 
 # ---------------- FOOTER ----------------
 now_ist = datetime.now(IST)
-
 st.caption(
     f"⏱ Current IST time: {now_ist.strftime('%d %b %Y, %I:%M %p')} | "
     "Hourly updates via GitHub Actions"
