@@ -2,14 +2,13 @@ name: Auto Update Weather Model
 
 on:
   schedule:
-    - cron: "0 * * * *"   # Hourly weather update
-    - cron: "0 6 * * *"   # Daily model training at 06:00 UTC
+    - cron: "0 * * * *"   # hourly update
+    - cron: "0 6 * * *"   # daily training at 06:00 UTC
   workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
 
@@ -29,6 +28,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # 🔴 PULL FIRST (IMPORTANT)
+      - name: Pull latest main
+        run: |
+          git pull origin main
+
       - name: Hourly weather update
         env:
           WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
@@ -44,12 +48,11 @@ jobs:
             echo "Skipping daily training"
           fi
 
-      - name: Sync, commit and push
+      - name: Commit and push changes
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
-          git pull --rebase origin main
           git add data model
           git commit -m "auto update weather data and model" || echo "No changes"
           git push origin main
@@ -58,5 +61,4 @@ jobs:
         env:
           RENDER_HOOK: ${{ secrets.RENDER }}
         run: |
-          echo "Triggering Render deploy..."
           curl -X POST "$RENDER_HOOK"
