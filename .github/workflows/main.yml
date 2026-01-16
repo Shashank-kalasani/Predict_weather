@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # FULL history (mandatory)
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -49,14 +49,11 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
 
-          # ALWAYS sync FIRST
           git pull --rebase origin main
-
-          # THEN stage changes
           git add data model
-
-          # THEN commit
           git commit -m "auto update weather data and model" || echo "No changes"
-
-          # THEN push
           git push origin main
+
+      - name: Trigger Render Redeploy
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
