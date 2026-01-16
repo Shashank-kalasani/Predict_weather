@@ -4,6 +4,8 @@ import numpy as np
 import joblib
 from tensorflow.keras.models import load_model
 import altair as alt
+from datetime import datetime
+import pytz
 
 # ---------------- CONFIG ----------------
 DATA_PATH = "data/live_weather.csv"
@@ -11,10 +13,12 @@ MODEL_PATH = "model/temp_lstm.keras"
 SCALER_PATH = "model/temp_scaler.pkl"
 WINDOW = 24
 
-st.set_page_config(page_title="Weather Prediction", layout="wide")
+st.set_page_config(
+    page_title="Weather Prediction",
+    layout="wide"
+)
 
-# ---------------- DATA LOADING ----------------
-@st.cache_data
+# ---------------- DATA LOADING (NO CACHE) ----------------
 def load_data():
     df = pd.read_csv(DATA_PATH)
 
@@ -27,11 +31,12 @@ def load_data():
     df = df.sort_values("time").reset_index(drop=True)
     return df
 
-@st.cache_resource
+
 def load_model_and_scaler():
     model = load_model(MODEL_PATH, compile=False)
     scaler = joblib.load(SCALER_PATH)
     return model, scaler
+
 
 df = load_data()
 model, scaler = load_model_and_scaler()
@@ -43,6 +48,12 @@ st.caption("All times shown in IST (Asia/Kolkata)")
 last_time = df["time"].iloc[-1]
 st.markdown(
     f"**Last available data:** {last_time.strftime('%d %b %Y, %I:%M %p')} IST"
+)
+
+# ---------------- DEBUG: APP RESTART TIME ----------------
+ist = pytz.timezone("Asia/Kolkata")
+st.sidebar.success(
+    f"App restarted at:\n{datetime.now(ist).strftime('%d %b %Y %I:%M:%S %p IST')}"
 )
 
 # ---------------- LAST 48 HOURS CHART ----------------
@@ -70,7 +81,7 @@ hist_chart = (
 
 st.altair_chart(hist_chart, use_container_width=True)
 
-# ---------------- NEXT 24 HOURS PREDICTION ----------------
+# ---------------- NEXT 24 HOURS FORECAST ----------------
 st.subheader("🔮 Next 24 Hours Forecast")
 
 temps = df["temp"].values.reshape(-1, 1)
@@ -91,7 +102,9 @@ for _ in range(24):
         axis=1
     )
 
-preds = scaler.inverse_transform(np.array(preds).reshape(-1, 1)).flatten()
+preds = scaler.inverse_transform(
+    np.array(preds).reshape(-1, 1)
+).flatten()
 
 future_times = pd.date_range(
     start=last_time + pd.Timedelta(hours=1),
@@ -105,7 +118,7 @@ pred_df = pd.DataFrame({
     "pred_temp": preds
 })
 
-# ---------------- PREDICTION CHART ----------------
+# ---------------- FORECAST CHART ----------------
 pred_chart = (
     alt.Chart(pred_df)
     .mark_line(point=True, color="orange")
@@ -126,7 +139,7 @@ pred_chart = (
 
 st.altair_chart(pred_chart, use_container_width=True)
 
-# ---------------- NEXT 24 HOURS TABLE ----------------
+# ---------------- FORECAST TABLE ----------------
 st.subheader("📋 Next 24 Hours – Table (IST)")
 
 table_df = pred_df.copy()
