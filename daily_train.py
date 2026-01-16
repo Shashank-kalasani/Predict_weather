@@ -14,6 +14,14 @@ EPOCHS_DAILY = 2
 IST = pytz.timezone("Asia/Kolkata")
 
 
+def normalize_time(series):
+    times = pd.to_datetime(series, errors="coerce")
+    if times.dt.tz is None:
+        return times.dt.tz_localize(IST)
+    else:
+        return times.dt.tz_convert(IST)
+
+
 def create_sequences(series, window):
     X, y = [], []
     for i in range(window, len(series)):
@@ -24,7 +32,8 @@ def create_sequences(series, window):
 
 def train_model():
     df = pd.read_csv(DATA_PATH)
-    df["time"] = pd.to_datetime(df["time"]).dt.tz_localize(IST)
+
+    df["time"] = normalize_time(df["time"])
 
     scaler = joblib.load(SCALER_PATH)
     model = load_model(MODEL_PATH, compile=False)
@@ -37,11 +46,16 @@ def train_model():
     scaled = scaler.transform(df[["temp"]].values)
     X, y = create_sequences(scaled, WINDOW)
 
-    model.fit(X, y, epochs=EPOCHS_DAILY, batch_size=32, verbose=1)
+    model.fit(
+        X,
+        y,
+        epochs=EPOCHS_DAILY,
+        batch_size=32,
+        verbose=1
+    )
 
     model.save(MODEL_PATH)
-
-    print("✅ Daily training complete")
+    print("✅ Daily training completed")
 
 
 if __name__ == "__main__":
