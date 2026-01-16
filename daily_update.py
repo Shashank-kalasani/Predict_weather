@@ -1,58 +1,49 @@
 import requests
 import pandas as pd
-import numpy as np
-import joblib
-import keras
-from tensorflow.keras.models import load_model
-import tensorflow as tf
-from tensorflow.keras.optimizers import Adam
 import os
+import pytz
 
 API_KEY = os.getenv("WEATHER_API_KEY")
 CITY = os.getenv("CITY", "Nagpur")
+
+DATA_PATH = "data/live_weather.csv"
+IST = pytz.timezone("Asia/Kolkata")
 
 
 def fetch_live_weather():
     url = "https://api.weatherapi.com/v1/current.json"
     params = {"key": API_KEY, "q": CITY}
 
-    try:
-        r = requests.get(url, params=params, timeout=10)
-        r.raise_for_status()  
-        data = r.json()
+    r = requests.get(url, params=params, timeout=10)
+    r.raise_for_status()
 
-        temp = data["current"]["temp_c"]
-        time = pd.to_datetime(data["current"]["last_updated"]).floor("H")
+    data = r.json()
 
-        return time, temp
+    temp = data["current"]["temp_c"]
 
-    except requests.exceptions.RequestException as e:
-        print("⚠️ WeatherAPI request failed:", e)
-        return None, None
+    # WeatherAPI time is LOCAL → force IST explicitly
+    time_ist = pd.to_datetime(
+        data["current"]["last_updated"]
+    ).tz_localize(IST).floor("H")
+
+    return time_ist, temp
 
 
 def update_data():
-    df=pd.read_csv(r"data/live_weather.csv")
+    if not os.path.exists(DATA_PATH):
+        raise FileNotFoundError(f"{DATA_PATH} not found")
 
-    time,temp=fetch_live_weather()
-    
-    if time is None:
-        print("❌ Skipping update (API unavailable)")
-        return
+    df = pd.read_csv(DATA_PATH)
+    df["time"] = pd.to_datetime(df["time"]).dt.tz_convert(IST)
 
-    df["time"] = pd.to_datetime(df["time"])
+    time, temp = fetch_live_weather()
 
+    new_row = pd.DataFrame(
+        [{"time": time, "temp": temp}]
+    )
 
-    new_row={"time":time.floor("H"),"temp":temp}
+    df = pd.concat([df, new_row], ignore_index=True)
 
-    new_row['time']=pd.to_datetime(new_row['time'])
-
-    df=pd.concat([df,pd.DataFrame([new_row])],ignore_index=True)
-
-    df= df.drop_duplicates(subset="time", keep="last")
-    df= df.sort_values("time").reset_index(drop=True)
-    
-    df.to_csv(r'C:\Users\kalas\Desktop\desktopcopy\coding\ML_Projects\predict_weather\data\live_weather.csv',index=False)
-
-if __name__ == "__main__":
-    update_data()
+    # Remove duplicates by hour
+    df = df.drop_duplicates(subset="time", keep="last")
+    df =
