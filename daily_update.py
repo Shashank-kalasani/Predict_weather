@@ -21,7 +21,6 @@ def fetch_live_weather():
 
     temp = data["current"]["temp_c"]
 
-    # WeatherAPI gives LOCAL time → localize to IST
     time_ist = (
         pd.to_datetime(data["current"]["last_updated"])
         .tz_localize(IST)
@@ -37,7 +36,6 @@ def update_data():
 
     df = pd.read_csv(DATA_PATH)
 
-    # CSV timestamps are tz-naive → localize
     df["time"] = pd.to_datetime(df["time"]).dt.tz_localize(IST)
 
     time, temp = fetch_live_weather()
@@ -51,7 +49,7 @@ def update_data():
 
     df.to_csv(DATA_PATH, index=False)
 
-    print(f"✅ Weather updated: {time} → {temp}°C")
+    print(f"Weather updated: {time} → {temp}°C")
 
 
 if __name__ == "__main__":
