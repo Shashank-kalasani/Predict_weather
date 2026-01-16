@@ -21,10 +21,12 @@ def fetch_live_weather():
 
     temp = data["current"]["temp_c"]
 
-    # WeatherAPI time is LOCAL → force IST explicitly
-    time_ist = pd.to_datetime(
-        data["current"]["last_updated"]
-    ).tz_localize(IST).floor("H")
+    # WeatherAPI gives LOCAL time → localize to IST
+    time_ist = (
+        pd.to_datetime(data["current"]["last_updated"])
+        .tz_localize(IST)
+        .floor("H")
+    )
 
     return time_ist, temp
 
@@ -34,21 +36,19 @@ def update_data():
         raise FileNotFoundError(f"{DATA_PATH} not found")
 
     df = pd.read_csv(DATA_PATH)
-    df["time"] = pd.to_datetime(df["time"]).dt.tz_convert(IST)
+
+    # CSV timestamps are tz-naive → localize
+    df["time"] = pd.to_datetime(df["time"]).dt.tz_localize(IST)
 
     time, temp = fetch_live_weather()
 
-    new_row = pd.DataFrame(
-        [{"time": time, "temp": temp}]
-    )
+    new_row = pd.DataFrame([{"time": time, "temp": temp}])
 
     df = pd.concat([df, new_row], ignore_index=True)
 
-    # Remove duplicates by hour
     df = df.drop_duplicates(subset="time", keep="last")
     df = df.sort_values("time").reset_index(drop=True)
 
-    # ✅ WRITE RELATIVE PATH (WORKS EVERYWHERE)
     df.to_csv(DATA_PATH, index=False)
 
     print(f"✅ Weather updated: {time} → {temp}°C")
