@@ -16,7 +16,6 @@ def fetch_live_weather():
 
     r = requests.get(url, params=params, timeout=10)
     r.raise_for_status()
-
     data = r.json()
 
     temp = data["current"]["temp_c"]
@@ -31,9 +30,6 @@ def fetch_live_weather():
 
 
 def update_data():
-    if not os.path.exists(DATA_PATH):
-        raise FileNotFoundError(f"{DATA_PATH} not found")
-
     df = pd.read_csv(DATA_PATH)
 
     df["time"] = pd.to_datetime(df["time"]).dt.tz_localize(IST)
@@ -41,7 +37,6 @@ def update_data():
     time, temp = fetch_live_weather()
 
     new_row = pd.DataFrame([{"time": time, "temp": temp}])
-
     df = pd.concat([df, new_row], ignore_index=True)
 
     df = df.drop_duplicates(subset="time", keep="last")
@@ -49,7 +44,7 @@ def update_data():
 
     df.to_csv(DATA_PATH, index=False)
 
-    print(f"Weather updated: {time} → {temp}°C")
+    print(f"✅ Weather updated: {time} → {temp}°C")
 
 
 if __name__ == "__main__":
