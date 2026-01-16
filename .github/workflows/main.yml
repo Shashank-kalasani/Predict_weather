@@ -54,6 +54,16 @@ jobs:
           git commit -m "auto update weather data and model" || echo "No changes"
           git push origin main
 
+      - name: Debug Render secret
+        run: |
+          if [ -z "${{ secrets.RENDER }}" ]; then
+            echo "RENDER secret is EMPTY"
+            exit 1
+          else
+            echo "RENDER secret is PRESENT"
+          fi
+
       - name: Trigger Render Redeploy
         run: |
-          curl -X POST "${{ secrets.RENDER}}"
+          curl -X POST "${{ secrets.RENDER }}"
+
